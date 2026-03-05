@@ -1,0 +1,3 @@
+- name: OVGGT
+  description: O(1) Constant-Cost Streaming Visual Geometry Transformer
+  url: /OVGGT
