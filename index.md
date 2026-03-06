@@ -7,6 +7,8 @@ title: Home
   <img src="{{ '/assets/images/VAISR-top.svg' | relative_url }}" alt="VAISR — Visual Intelligence and Spatial Engineering">
 </section>
 
+<p class="intro">This page serves as a central hub for our research projects.</p>
+
 <section class="section">
   <h2 class="section-title">Projects</h2>
   <div class="project-grid">

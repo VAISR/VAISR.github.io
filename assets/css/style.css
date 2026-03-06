@@ -45,6 +45,14 @@ main {
   max-height: 200px;
 }
 
+/* Intro */
+.intro {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 1.05rem;
+  padding-bottom: 1rem;
+}
+
 /* Section */
 .section {
   padding: 3rem 0;
