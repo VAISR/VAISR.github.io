@@ -1,0 +1,201 @@
+/* ==========================================================================
+ * terminal.css — light CLI/terminal layer on top of nubo-design-style.
+ * --------------------------------------------------------------------------
+ * Loaded LAST (tokens.css → nubo-design.css → terminal.css). Only ADDS new
+ * classes + a few scoped tweaks; never edits the vendored files. Everything is
+ * built on existing design tokens so light/dark themes keep working.
+ * Adapted from orientonubo.github.io for the VAISR research hub.
+ * ========================================================================== */
+
+:root {
+  --term-mono: var(--p-font-mono);
+
+  /* Title + body → the visitor's native OS UI font (no webfont load).
+     Overrides the vendored tokens.css so it stays a clean copy of
+     nubo-design-style. Terminal chrome / prompts / code / BibTeX / result
+     tables keep --p-font-mono (Ubuntu Mono). */
+  --p-font-sans:  system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                  Roboto, "Helvetica Neue", Arial, "PingFang TC",
+                  "Microsoft JhengHei", "Noto Sans CJK TC", sans-serif;
+  --p-font-brand: var(--p-font-sans);
+}
+
+/* --------------------------------------------------------------------------
+ * Site header — terminal prompt brand + command-style nav.
+ * ------------------------------------------------------------------------ */
+.site-header { padding: 0; }
+.sh-inner {
+  display: flex; align-items: center; gap: 18px;
+  width: 100%; max-width: 1180px; margin: 0 auto;
+  padding: 12px 32px;
+}
+.term-brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--term-mono); text-decoration: none;
+  font-size: 15px; font-weight: 700; color: var(--p-dark);
+  flex-shrink: 0;
+}
+.term-brand .tb-dots { display: inline-flex; gap: 6px; margin-right: 4px; }
+.win-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.win-dot.r { background: #ff5f56; }
+.win-dot.y { background: #ffbd2e; }
+.win-dot.g { background: #27c93f; }
+.term-brand .tb-user { color: var(--p-accent); }
+.term-brand .tb-sep,
+.term-brand .tb-cwd { color: var(--p-muted); font-weight: 600; }
+.term-brand .tb-prompt { color: var(--p-dark); }
+
+.term-nav {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-left: auto; flex-wrap: wrap;
+  font-family: var(--term-mono);
+}
+.term-nav a {
+  display: inline-flex; align-items: center;
+  padding: 5px 12px; border-radius: var(--p-radius-sm);
+  color: var(--p-muted); text-decoration: none;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid transparent;
+  transition: color var(--p-dur-fast), background var(--p-dur-fast), border-color var(--p-dur-fast);
+}
+.term-nav a:hover { color: var(--p-accent); background: var(--p-card-alt); }
+.term-nav a.active {
+  color: var(--p-accent);
+  border-color: var(--p-accent-border);
+  background: var(--p-accent-soft);
+}
+
+/* --------------------------------------------------------------------------
+ * Window chrome — traffic-light title bar for cards / hero panels.
+ * ------------------------------------------------------------------------ */
+.win {
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-lg);
+  background: var(--p-card-bg);
+  overflow: hidden;
+}
+.win-chrome {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--p-border);
+  background: color-mix(in srgb, var(--p-card-alt) 70%, transparent);
+  font-family: var(--term-mono); font-size: 12px; color: var(--p-muted);
+}
+.win-dots { display: inline-flex; gap: 6px; flex-shrink: 0; }
+.win-title { margin-left: 4px; letter-spacing: 0.3px; }
+.win-body { padding: 20px 22px; }
+
+/* --------------------------------------------------------------------------
+ * Terminal section head — `$ ls projects/` style prompt + box rule.
+ * ------------------------------------------------------------------------ */
+.term-head {
+  display: flex; align-items: baseline; gap: 9px;
+  margin: 0 0 18px; padding-bottom: 9px;
+  font-family: var(--term-mono);
+  border-bottom: 1px dashed var(--p-border);
+}
+.term-head .th-prompt { color: var(--p-accent); font-weight: 700; flex-shrink: 0; }
+.term-head .th-cmd {
+  color: var(--p-dark); font-weight: 700;
+  font-size: 16px; letter-spacing: 0.3px;
+}
+.term-head .th-meta { margin-left: auto; font-size: 12px; color: var(--p-muted); }
+
+/* --------------------------------------------------------------------------
+ * Blinking cursor + inline prompt helpers.
+ * ------------------------------------------------------------------------ */
+.term-cursor {
+  display: inline-block; width: 0.55em; height: 1.05em;
+  vertical-align: text-bottom; margin-left: 3px;
+  background: var(--p-accent);
+  animation: term-blink 1.1s steps(1) infinite;
+}
+@keyframes term-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.prompt { font-family: var(--term-mono); color: var(--p-accent); font-weight: 700; }
+.term-line { font-family: var(--term-mono); }
+
+/* Inline SVG sizing inside buttons / links. */
+.btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --------------------------------------------------------------------------
+ * Home hero — always-dark terminal window so the white VAISR wordmark
+ * (VAISR-top.svg forces white via feColorMatrix) reads in light AND dark.
+ * ------------------------------------------------------------------------ */
+.hero-win {
+  max-width: 720px; margin: 6px auto 0;
+  border: 1px solid #2a2a2a; border-radius: var(--p-radius-lg);
+  background: #171717; overflow: hidden;
+  box-shadow: 0 12px 40px var(--p-shadow);
+}
+.hero-win .hw-chrome {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px; border-bottom: 1px solid #2a2a2a;
+  background: #1f1f1e;
+  font-family: var(--term-mono); font-size: 12px; color: #898781;
+}
+.hero-win .hw-title { margin-left: 4px; letter-spacing: 0.3px; }
+.hero-win .hw-body {
+  padding: 48px 28px 42px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+}
+.hero-logo { width: 74%; max-width: 460px; height: auto; }
+.hero-tagline {
+  font-family: var(--term-mono); color: #c2c2b7; font-size: 15px;
+  margin: 0; display: inline-flex; align-items: center;
+}
+.hero-tagline .hc { color: #328a97; font-weight: 700; margin-right: 8px; }
+.hero-intro {
+  text-align: center; color: var(--p-muted); font-size: 14.5px;
+  max-width: 620px; margin: 22px auto 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Project grid — clickable research-project cards with venue tag.
+ * ------------------------------------------------------------------------ */
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+.proj-card {
+  display: block; text-decoration: none; color: var(--p-text);
+  border: 1px solid var(--p-border); border-radius: var(--p-radius-lg);
+  background: var(--p-card-bg); padding: 20px 22px;
+  transition: transform var(--p-dur-mid) var(--p-ease-out), border-color var(--p-dur-fast), box-shadow var(--p-dur-mid);
+}
+.proj-card:hover { transform: translateY(-4px); border-color: var(--p-accent); box-shadow: 0 12px 30px var(--p-shadow); }
+.proj-card .pc-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.proj-card .pc-name { font-family: var(--p-font-brand); font-size: 19px; font-weight: 700; color: var(--p-dark); }
+.proj-card .pc-desc { font-size: 13.5px; color: var(--p-muted); line-height: 1.55; margin: 0; }
+.proj-card .pc-go { margin-top: 12px; font-family: var(--term-mono); font-size: 12.5px; color: var(--p-accent); font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+ * Social / contact link chips.
+ * ------------------------------------------------------------------------ */
+.social-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.social-row a.social-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: var(--p-radius-sm);
+  border: 1px solid var(--p-border); background: var(--p-card-alt);
+  color: var(--p-dark); text-decoration: none;
+  font-family: var(--term-mono); font-size: 13px; font-weight: 600;
+  transition: border-color var(--p-dur-fast), color var(--p-dur-fast);
+}
+.social-row a.social-link:hover { border-color: var(--p-accent); color: var(--p-accent); }
+.social-row a.social-link svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --------------------------------------------------------------------------
+ * Footer
+ * ------------------------------------------------------------------------ */
+.site-foot .foot-prompt { font-family: var(--term-mono); }
+.site-foot .foot-prompt .prompt { margin-right: 6px; }
+
+/* --------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .sh-inner { flex-wrap: wrap; padding: 12px 18px; gap: 10px; }
+  .term-nav { margin-left: 0; width: 100%; }
+  .hero-win .hw-body { padding: 36px 18px 32px; }
+  .hero-logo { width: 86%; }
+}

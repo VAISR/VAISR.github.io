@@ -1,3 +1,4 @@
 - name: OVGGT
-  description: O(1) Constant-Cost Streaming Visual Geometry Transformer
-  url: /OVGGT
+  description: O(1) Constant-Cost Streaming Visual Geometry Transformer — training-free, constant-memory streaming 3D reconstruction from arbitrarily long video.
+  venue: ECCV 2026
+  url: /OVGGT/

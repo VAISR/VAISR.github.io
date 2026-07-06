@@ -4,3 +4,14 @@ url: "https://vaisr.github.io"
 baseurl: ""
 
 markdown: kramdown
+
+# ── Terminal brand / navigation ──────────────────────────────────────────
+# Rendered as  `vaisr@ntu:~$`  in the site header (see _includes/header.html).
+brand: "vaisr@ntu"
+cwd: "~"
+
+nav:
+  - label: "~/home"
+    url: "/"
+  - label: "ls projects/"
+    url: "/#projects"

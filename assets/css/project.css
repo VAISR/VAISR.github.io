@@ -1,0 +1,115 @@
+/* ==========================================================================
+ * project.css — paper / project-page components not covered by nubo-design.
+ * Loaded only on pages using _layouts/project.html. Built entirely on tokens
+ * so it follows light / dark and the dynamic accent.
+ * ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * Paper hero — title, venue badge, news line, authors, links.
+ * ------------------------------------------------------------------------ */
+.paper-hero { text-align: center; padding: 20px 0 6px; }
+.paper-hero h1 {
+  font-family: var(--p-font-brand);
+  font-size: 33px; line-height: 1.22; font-weight: 700;
+  margin: 6px auto 16px; max-width: 900px; color: var(--p-dark);
+}
+.paper-venue { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.paper-news {
+  font-family: var(--term-mono); color: var(--p-accent);
+  font-weight: 600; font-size: 14px; margin: 0 0 18px;
+}
+.paper-authors { font-size: 16px; color: var(--p-text); margin: 4px auto; max-width: 840px; line-height: 1.7; }
+.paper-authors sup { color: var(--p-accent); font-weight: 700; }
+.paper-affil { font-size: 14px; color: var(--p-muted); margin: 8px auto 20px; max-width: 760px; }
+.paper-affil sup { color: var(--p-accent); font-weight: 700; }
+.paper-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+
+/* --------------------------------------------------------------------------
+ * TL;DR callout.
+ * ------------------------------------------------------------------------ */
+.tldr {
+  background: var(--p-accent-soft);
+  border: 1px solid var(--p-accent-border);
+  border-left: 4px solid var(--p-accent);
+  border-radius: var(--p-radius);
+  padding: 15px 18px; font-size: 15px; line-height: 1.6; color: var(--p-text);
+  max-width: 920px; margin: 6px auto 0;
+}
+.tldr .tldr-label { color: var(--p-accent); font-weight: 700; margin-right: 6px; }
+
+/* --------------------------------------------------------------------------
+ * Figures + captions.
+ * ------------------------------------------------------------------------ */
+.fig { margin: 0; text-align: center; }
+.fig img {
+  width: 100%; height: auto;
+  border-radius: var(--p-radius); border: 1px solid var(--p-border);
+}
+.fig-caption {
+  font-size: 13px; color: var(--p-muted); line-height: 1.55;
+  max-width: 920px; margin: 11px auto 0; text-align: left;
+}
+.fig-caption strong { color: var(--p-dark); }
+.fig-sub { margin-top: 30px; }
+
+/* --------------------------------------------------------------------------
+ * Method component cards.
+ * ------------------------------------------------------------------------ */
+.method-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; margin-top: 6px; }
+.method-component {
+  background: var(--p-card-bg); border: 1px solid var(--p-border);
+  border-radius: var(--p-radius); padding: 16px 18px;
+  font-size: 14px; line-height: 1.6; color: var(--p-text);
+}
+.method-component strong:first-child { color: var(--p-accent); }
+@media (max-width: 768px) { .method-grid { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------------------------
+ * Results — horizontally scrollable dense tables.
+ * ------------------------------------------------------------------------ */
+.results-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius);
+  margin-top: 6px;
+}
+.results-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--p-font-mono);   /* keep dense numeric tables monospaced + aligned */
+  font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.results-table th, .results-table td {
+  padding: 6px 10px; text-align: center;
+  border-bottom: 1px solid var(--p-border);
+}
+.results-table thead th {
+  background: var(--p-card-alt); color: var(--p-muted);
+  font-weight: 700; font-size: 11.5px;
+}
+.results-table tbody td:first-child { text-align: left; color: var(--p-text); }
+.results-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Row highlight for our method (declared before cell tints so cells win). */
+.results-table .ours-row td { background: color-mix(in srgb, var(--p-accent) 7%, transparent); }
+.results-table .ours-row td:first-child { color: var(--p-dark); font-weight: 700; }
+
+/* Cell tints — element+2 classes so they override .ours-row td. */
+.results-table td.best   { background: var(--p-accent-soft); color: var(--p-accent); font-weight: 700; }
+.results-table td.second { background: color-mix(in srgb, var(--p-warn) 16%, transparent); color: var(--p-warn); font-weight: 600; }
+.results-table td.oom    { color: var(--p-muted); font-style: italic; }
+
+/* --------------------------------------------------------------------------
+ * BibTeX box + copy button.
+ * ------------------------------------------------------------------------ */
+.bibtex { position: relative; max-width: 100%; margin-top: 6px; }
+.bibtex pre { padding-right: 74px; }
+.bibtex-copy {
+  position: absolute; top: 10px; right: 10px;
+  padding: 5px 12px; font-size: 12.5px; font-weight: 600;
+  font-family: var(--term-mono);
+  background: var(--p-accent); color: var(--p-accent-ink);
+  border: 0; border-radius: var(--p-radius-sm); cursor: pointer;
+  transition: filter 0.12s;
+}
+.bibtex-copy:hover { filter: brightness(1.07); }
+.bibtex-copy:active { transform: scale(0.96); }

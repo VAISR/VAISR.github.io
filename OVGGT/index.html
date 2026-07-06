@@ -1,995 +1,493 @@
-<!DOCTYPE html>
-<html lang="en">
+---
+layout: project
+title: "OVGGT: O(1) Constant-Cost Streaming Visual Geometry Transformer"
+description: "OVGGT is a training-free framework enabling streaming 3D reconstruction from arbitrarily long video with constant memory and compute."
+og_image: /OVGGT/static/images/teaser.png
+---
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OVGGT: O(1) Constant-Cost Streaming Visual Geometry Transformer</title>
-  <meta name="description"
-    content="OVGGT is a training-free framework enabling streaming 3D reconstruction from arbitrarily long video with constant memory and compute.">
-  <meta name="keywords" content="OVGGT, streaming 3D reconstruction, KV cache compression, visual geometry transformer">
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- HERO                                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section paper-hero">
+  <div class="paper-venue">
+    <span class="tag"><span class="tag-dot"></span>ECCV 2026</span>
+  </div>
+  <h1>OVGGT: O(1) Constant-Cost Streaming Visual Geometry Transformer</h1>
+  <p class="paper-authors">
+    Si-Yu Lu<sup>1</sup>, Po-Ting Chen<sup>2</sup>, Hui-Che Hsu<sup>2</sup>,
+    Sin-Ye Jhong<sup>2</sup>, Wen-Huang Cheng<sup>1</sup>, Yung-Yao Chen<sup>2</sup>
+  </p>
+  <p class="paper-affil">
+    <sup>1</sup>National Taiwan University &nbsp;&nbsp;
+    <sup>2</sup>National Taiwan University of Science and Technology
+  </p>
+  <div class="paper-links">
+    <a class="btn ghost" href="https://arxiv.org/abs/2603.05959" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      <span>Paper</span>
+    </a>
+    <a class="btn ghost" href="https://arxiv.org/abs/2603.05959" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+      <span>arXiv</span>
+    </a>
+    <a class="btn ghost" href="https://github.com/VAISR/OVGGT" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      <span>Code</span>
+    </a>
+  </div>
+</section>
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="OVGGT: O(1) Constant-Cost Streaming Visual Geometry Transformer">
-  <meta property="og:description" content="Training-free streaming 3D reconstruction with constant memory and compute">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="static/images/teaser.png">
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TL;DR                                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="tldr">
+    <span class="tldr-label">TL;DR</span>
+    OVGGT is a <em>training-free</em> framework enabling streaming 3D reconstruction from arbitrarily long
+    video with <strong>constant memory and compute</strong> &mdash; achieving \(\mathcal{O}(1)\) per-frame cost
+    while surpassing full-cache baselines in accuracy.
+  </div>
+</section>
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@400;500;600;700&family=Castoro&display=swap"
-    rel="stylesheet">
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- TEASER                                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <figure class="fig">
+    <img src="static/images/teaser.png"
+      alt="OVGGT teaser — quantitative and qualitative results across sequence lengths">
+    <figcaption class="fig-caption">
+      <strong>Left:</strong> Quantitative comparison on 7-Scenes across 200 frames.
+      <strong>Right:</strong> Qualitative 3D reconstructions demonstrating OVGGT's stability over long
+      sequences (50–500 frames).
+    </figcaption>
+  </figure>
+</section>
 
-  <!-- Bulma CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- ABSTRACT                                                                -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="term-head"><span class="th-prompt">$</span><span class="th-cmd">cat abstract</span></div>
+  <p>
+    Streaming 3D reconstruction from video demands bounded memory and compute, yet existing geometric
+    foundation models either operate offline with quadratic cost or accumulate an ever-growing KV cache that
+    exhausts GPU memory within hundreds of frames.
+    We present <strong>OVGGT</strong>, a training-free framework that bounds both memory and compute to a
+    fixed budget regardless of sequence length.
+    Our approach combines <em>Self-Selective Caching</em> (FFN-residual-based KV cache compression, fully
+    compatible with FlashAttention) with <em>Dynamic Anchor Protection</em> (shielding coordinate-critical
+    tokens from eviction to suppress geometric drift).
+    Experiments on indoor, outdoor, and ultra-long benchmarks show OVGGT processes arbitrarily long videos
+    within a constant VRAM envelope while surpassing existing methods in accuracy.
+  </p>
+</section>
 
-  <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-  <!-- Academicons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
-
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="static/css/index.css">
-
-  <!-- MathJax 3 -->
-  <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
-      svg: { fontCache: 'global' }
-    };
-  </script>
-  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-</head>
-
-<body>
-
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- HERO                                                                -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="hero">
-    <div class="hero-body">
-      <div class="container is-max-desktop">
-        <div class="columns is-centered">
-          <div class="column has-text-centered">
-
-            <h1 class="title is-1 publication-title">
-              OVGGT: O(1) Constant-Cost Streaming<br>Visual Geometry Transformer
-            </h1>
-
-            <div class="is-size-5 publication-authors">
-              <span class="author-block">Si-Yu Lu<sup>1</sup>,</span>
-              <span class="author-block">Po-Ting Chen<sup>2</sup>,</span>
-              <span class="author-block">Hui-Che Hsu<sup>2</sup>,</span>
-              <span class="author-block">Sin-Ye Jhong<sup>2</sup>,</span>
-              <span class="author-block">Wen-Huang Cheng<sup>1</sup>,</span>
-              <span class="author-block">Yung-Yao Chen<sup>2</sup></span>
-            </div>
-
-            <div class="is-size-5 publication-authors">
-              <span class="author-block"><sup>1</sup>National Taiwan University &nbsp;&nbsp;
-                <sup>2</sup>National Taiwan University of Science and Technology</span>
-            </div>
-
-            <div class="column has-text-centered">
-              <div class="publication-links">
-                <span class="link-block">
-                  <a href="https://arxiv.org/abs/2603.05959" target="_blank"
-                    class="external-link button is-normal is-rounded is-dark">
-                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
-                    <span>Paper</span>
-                  </a>
-                </span>
-                <span class="link-block">
-                  <a href="https://arxiv.org/abs/2603.05959" target="_blank"
-                    class="external-link button is-normal is-rounded is-dark">
-                    <span class="icon"><i class="ai ai-arxiv"></i></span>
-                    <span>arXiv</span>
-                  </a>
-                </span>
-                <span class="link-block">
-                  <a href="https://github.com/VAISR/OVGGT" target="_blank"
-                    class="external-link button is-normal is-rounded is-dark">
-                    <span class="icon"><i class="fab fa-github"></i></span>
-                    <span>Code</span>
-                  </a>
-                </span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- METHOD OVERVIEW                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="term-head"><span class="th-prompt">$</span><span class="th-cmd">cat method</span></div>
+  <figure class="fig">
+    <img src="static/images/pipeline.png" alt="OVGGT pipeline overview">
+    <figcaption class="fig-caption">
+      <strong>Overview of OVGGT.</strong> At each time step, the input frame is encoded into tokens and
+      processed by a spatial-temporal decoder that attends to a bounded KV cache. Self-Selective Caching
+      scores and compresses tokens, while Dynamic Anchor Protection shields coordinate-critical tokens from
+      eviction.
+    </figcaption>
+  </figure>
+  <div class="method-grid">
+    <div class="method-component">
+      <strong>Self-Selective Caching (SSC)</strong> derives per-token importance from FFN residual magnitudes
+      &mdash; quantities already computed during the forward pass &mdash; requiring zero extra overhead.
+      The <em>Activation Value Rating</em> scores each token as
+      \( s_i^{(l)} = \bigl\| \lambda_2^{(l)} \cdot \mathrm{FFN}\bigl(\mathrm{LN}(\mathbf{h}_i^{(l)})\bigr) \bigr\|_2 \),
+      and the <em>KV Cache Compression</em> module retains the top-scoring tokens within a fixed per-layer
+      budget.
     </div>
-  </section>
-
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- TL;DR                                                               -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="section">
-    <div class="container">
-      <div class="tldr-box">
-        <strong class="tldr-label">TL;DR:</strong>
-        OVGGT is a <em>training-free</em> framework enabling streaming 3D reconstruction from arbitrarily long video
-        with <strong>constant memory and compute</strong> &mdash; achieving \(\mathcal{O}(1)\) per-frame cost while
-        surpassing full-cache baselines in accuracy.
-      </div>
+    <div class="method-component">
+      <strong>Dynamic Anchor Protection (DAP)</strong> explicitly shields geometrically critical tokens from
+      eviction.
+      The <em>Global Initial Anchor</em> permanently protects all first-frame tokens to maintain
+      coordinate-system consistency, while <em>Historical Anchors</em> are adaptively registered as the camera
+      traverses the scene, providing long-range geometric references.
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- TEASER                                                              -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="section" style="padding-top:0;">
-    <div class="container">
-      <div class="teaser-image has-text-centered">
-        <img src="static/images/teaser.png"
-          alt="OVGGT teaser — quantitative and qualitative results across sequence lengths" style="width:100%;">
-        <p class="image-caption">
-          <strong>Left:</strong> Quantitative comparison on 7-Scenes across 200 frames. <strong>Right:</strong>
-          Qualitative 3D reconstructions
-          demonstrating OVGGT's stability over long sequences (50–500 frames).
-        </p>
-      </div>
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- RESULTS                                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="term-head"><span class="th-prompt">$</span><span class="th-cmd">cat results</span></div>
+
+  <!-- ─── Qualitative ─── -->
+  <h3 class="section-head">Qualitative Visualizations</h3>
+  <figure class="fig">
+    <img src="static/images/vis.png" alt="Qualitative comparison of 3D reconstructions" loading="lazy">
+    <figcaption class="fig-caption">
+      <strong>Qualitative comparison.</strong> Ground truth vs. StreamVGGT, Evict3R, InfiniteVGGT, and OVGGT
+      (Ours). Our method produces more complete and geometrically accurate reconstructions, particularly on
+      long sequences where competing methods exhibit drift or missing regions.
+    </figcaption>
+  </figure>
+
+  <!-- ─── Efficiency ─── -->
+  <h3 class="section-head fig-sub">Efficiency Comparison</h3>
+  <figure class="fig">
+    <img src="static/images/efficiency.png" alt="Efficiency comparison — FPS and VRAM">
+    <figcaption class="fig-caption">
+      <strong>FPS and VRAM vs. sequence length.</strong> OVGGT maintains constant throughput and memory usage
+      regardless of video length, while competing methods exhibit linear or super-linear growth.
+    </figcaption>
+  </figure>
+
+  <!-- ─── Full-Cache Comparison ─── -->
+  <h3 class="section-head fig-sub">Comparison with Full-Cache Baseline</h3>
+  <figure class="fig">
+    <img src="static/images/comparison_fullcache.png" alt="Comparison with full-cache baseline">
+    <figcaption class="fig-caption">
+      <strong>Accuracy, Completeness, and Chamfer Distance vs. sequence length.</strong> OVGGT's bounded cache
+      achieves comparable or better reconstruction quality than the full-cache StreamVGGT baseline, with
+      stable performance as sequence length grows.
+    </figcaption>
+  </figure>
+
+  <!-- ─── Quantitative Tables ─── -->
+  <h3 class="section-head fig-sub">Quantitative Comparisons</h3>
+
+  <div class="tabbar" role="tablist" data-tab-group="results">
+    <button class="tab" role="tab" aria-selected="true" data-tab="indoor">Indoor (7-Scenes / NRGBD)</button>
+    <button class="tab" role="tab" data-tab="outdoor">Outdoor / Ultra-Long</button>
+    <button class="tab" role="tab" data-tab="depth">Video Depth</button>
+    <span class="tab-ink"></span>
+  </div>
+
+  <!-- Tab 1: Indoor -->
+  <div class="tab-panel active" data-tab-group="results" data-tab="indoor">
+    <p class="small muted">
+      Quantitative comparison on 7-Scenes and NRGBD datasets across different sequence lengths.
+      Evict3R<sup>&dagger;</sup> denotes dynamically calibrated pruning rate.
+    </p>
+    <div class="results-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th rowspan="3">Method</th>
+            <th colspan="7" style="border-bottom:none;">7-Scenes</th>
+            <th colspan="7" style="border-bottom:none;">NRGBD</th>
+          </tr>
+          <tr>
+            <th rowspan="2">Len.</th>
+            <th colspan="2">Acc &darr;</th>
+            <th colspan="2">Comp &darr;</th>
+            <th colspan="2">NC &uarr;</th>
+            <th rowspan="2">Len.</th>
+            <th colspan="2">Acc &darr;</th>
+            <th colspan="2">Comp &darr;</th>
+            <th colspan="2">NC &uarr;</th>
+          </tr>
+          <tr>
+            <th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th>
+            <th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Spann3R</td><td>200</td>
+            <td>0.215</td><td>0.131</td><td>0.122</td><td>0.063</td><td>0.535</td><td>0.550</td>
+            <td>100</td>
+            <td>0.111</td><td>0.069</td><td>0.045</td><td>0.015</td><td>0.636</td><td>0.733</td>
+          </tr>
+          <tr>
+            <td>CUT3R</td><td></td>
+            <td>0.087</td><td>0.048</td><td>0.045</td><td>0.014</td><td>0.566</td><td>0.601</td>
+            <td></td>
+            <td>0.039</td><td>0.024</td><td>0.013</td><td>0.004</td><td>0.645</td><td>0.748</td>
+          </tr>
+          <tr>
+            <td>Point3R</td><td></td>
+            <td>0.041</td><td>0.019</td><td class="second">0.023</td><td class="second">0.006</td><td>0.579</td><td>0.622</td>
+            <td></td>
+            <td>0.046</td><td>0.028</td><td>0.016</td><td>0.004</td><td>0.662</td><td>0.775</td>
+          </tr>
+          <tr>
+            <td>TTT3R</td><td></td>
+            <td class="second">0.027</td><td>0.015</td><td class="second">0.023</td><td class="best">0.005</td><td>0.582</td><td>0.627</td>
+            <td></td>
+            <td>0.031</td><td>0.019</td><td class="best">0.012</td><td>0.004</td><td>0.650</td><td>0.756</td>
+          </tr>
+          <tr>
+            <td>StreamVGGT</td><td></td>
+            <td>0.038</td><td>0.014</td><td>0.029</td><td>0.007</td><td>0.583</td><td>0.628</td>
+            <td></td>
+            <td class="second">0.024</td><td class="best">0.014</td><td>0.013</td><td class="best">0.003</td><td>0.663</td><td>0.777</td>
+          </tr>
+          <tr>
+            <td>Evict3R</td><td></td>
+            <td colspan="6" class="oom">OOM</td>
+            <td></td>
+            <td>0.025</td><td class="second">0.015</td><td>0.013</td><td class="best">0.003</td><td>0.664</td><td>0.781</td>
+          </tr>
+          <tr>
+            <td>Evict3R<sup>&dagger;</sup></td><td></td>
+            <td>0.037</td><td class="second">0.013</td><td>0.027</td><td>0.007</td><td class="second">0.584</td><td class="second">0.631</td>
+            <td></td>
+            <td>0.031</td><td>0.020</td><td>0.013</td><td class="best">0.003</td><td>0.665</td><td class="second">0.791</td>
+          </tr>
+          <tr>
+            <td>InfiniteVGGT</td><td></td>
+            <td>0.046</td><td>0.016</td><td>0.031</td><td>0.008</td><td>0.582</td><td>0.627</td>
+            <td></td>
+            <td>0.035</td><td>0.022</td><td>0.014</td><td class="best">0.003</td><td class="second">0.669</td><td>0.787</td>
+          </tr>
+          <tr class="ours-row">
+            <td><strong>Ours</strong></td><td></td>
+            <td class="best">0.024</td><td class="best">0.008</td><td class="best">0.021</td><td class="best">0.005</td><td class="best">0.587</td><td class="best">0.635</td>
+            <td></td>
+            <td class="best">0.022</td><td class="best">0.014</td><td class="best">0.012</td><td class="best">0.003</td><td class="best">0.672</td><td class="best">0.796</td>
+          </tr>
+
+          <tr>
+            <td>Spann3R</td><td>500</td>
+            <td>0.343</td><td>0.263</td><td>0.154</td><td>0.085</td><td>0.515</td><td>0.521</td>
+            <td>300</td>
+            <td>0.346</td><td>0.221</td><td>0.175</td><td>0.099</td><td>0.558</td><td>0.586</td>
+          </tr>
+          <tr>
+            <td>CUT3R</td><td></td>
+            <td>0.194</td><td>0.143</td><td>0.092</td><td>0.034</td><td>0.527</td><td>0.538</td>
+            <td></td>
+            <td>0.244</td><td>0.136</td><td>0.081</td><td>0.019</td><td>0.575</td><td>0.613</td>
+          </tr>
+          <tr>
+            <td>Point3R</td><td></td>
+            <td>0.056</td><td>0.025</td><td>0.031</td><td>0.012</td><td>0.555</td><td>0.584</td>
+            <td></td>
+            <td>0.076</td><td>0.042</td><td class="best">0.014</td><td class="second">0.004</td><td>0.624</td><td>0.707</td>
+          </tr>
+          <tr>
+            <td>TTT3R</td><td></td>
+            <td>0.065</td><td>0.037</td><td>0.030</td><td>0.006</td><td>0.552</td><td>0.578</td>
+            <td></td>
+            <td>0.102</td><td>0.043</td><td>0.026</td><td>0.005</td><td>0.610</td><td>0.678</td>
+          </tr>
+          <tr>
+            <td>StreamVGGT</td><td></td>
+            <td colspan="6" class="oom">OOM</td>
+            <td></td>
+            <td colspan="6" class="oom">OOM</td>
+          </tr>
+          <tr>
+            <td>Evict3R</td><td></td>
+            <td colspan="6" class="oom">OOM</td>
+            <td></td>
+            <td colspan="6" class="oom">OOM</td>
+          </tr>
+          <tr>
+            <td>Evict3R<sup>&dagger;</sup></td><td></td>
+            <td>0.042</td><td>0.016</td><td>0.026</td><td class="second">0.005</td><td class="second">0.559</td><td class="second">0.589</td>
+            <td></td>
+            <td class="second">0.042</td><td class="second">0.026</td><td>0.017</td><td class="second">0.004</td><td>0.640</td><td>0.739</td>
+          </tr>
+          <tr>
+            <td>InfiniteVGGT</td><td></td>
+            <td class="second">0.040</td><td class="second">0.015</td><td class="second">0.024</td><td class="second">0.005</td><td class="best">0.561</td><td class="best">0.593</td>
+            <td></td>
+            <td>0.053</td><td>0.031</td><td>0.024</td><td>0.005</td><td class="best">0.646</td><td class="best">0.751</td>
+          </tr>
+          <tr class="ours-row">
+            <td><strong>Ours</strong></td><td></td>
+            <td class="best">0.031</td><td class="best">0.011</td><td class="best">0.020</td><td class="best">0.003</td><td class="best">0.561</td><td class="best">0.593</td>
+            <td></td>
+            <td class="best">0.037</td><td class="best">0.022</td><td class="second">0.015</td><td class="best">0.003</td><td class="second">0.642</td><td class="second">0.740</td>
+          </tr>
+
+          <tr>
+            <td>Spann3R</td><td>1000</td>
+            <td>0.340</td><td>0.262</td><td>0.154</td><td>0.092</td><td>0.508</td><td>0.510</td>
+            <td>500</td>
+            <td>0.516</td><td>0.342</td><td>0.225</td><td>0.130</td><td>0.552</td><td>0.578</td>
+          </tr>
+          <tr>
+            <td>CUT3R</td><td></td>
+            <td>0.240</td><td>0.166</td><td>0.102</td><td>0.015</td><td>0.513</td><td>0.516</td>
+            <td></td>
+            <td>0.328</td><td>0.247</td><td>0.157</td><td>0.085</td><td>0.562</td><td>0.592</td>
+          </tr>
+          <tr>
+            <td>Point3R</td><td></td>
+            <td>0.068</td><td class="second">0.028</td><td class="second">0.025</td><td class="second">0.006</td><td class="second">0.533</td><td class="second">0.549</td>
+            <td></td>
+            <td>0.116</td><td>0.049</td><td class="second">0.027</td><td class="best">0.004</td><td>0.620</td><td>0.698</td>
+          </tr>
+          <tr>
+            <td>TTT3R</td><td></td>
+            <td>0.126</td><td>0.080</td><td>0.050</td><td>0.010</td><td>0.525</td><td>0.535</td>
+            <td></td>
+            <td>0.169</td><td>0.082</td><td>0.096</td><td>0.015</td><td>0.594</td><td>0.647</td>
+          </tr>
+          <tr>
+            <td>StreamVGGT</td><td></td>
+            <td colspan="6" class="oom">OOM</td>
+            <td></td>
+            <td colspan="6" class="oom">OOM</td>
+          </tr>
+          <tr>
+            <td>Evict3R</td><td></td>
+            <td colspan="6" class="oom">OOM</td>
+            <td></td>
+            <td colspan="6" class="oom">OOM</td>
+          </tr>
+          <tr>
+            <td>Evict3R<sup>&dagger;</sup></td><td></td>
+            <td>0.134</td><td>0.059</td><td>0.052</td><td>0.009</td><td>0.531</td><td>0.545</td>
+            <td></td>
+            <td>0.072</td><td class="second">0.040</td><td class="best">0.026</td><td class="second">0.006</td><td class="second">0.641</td><td class="second">0.739</td>
+          </tr>
+          <tr>
+            <td>InfiniteVGGT</td><td></td>
+            <td class="second">0.061</td><td>0.031</td><td>0.035</td><td>0.014</td><td class="best">0.537</td><td class="best">0.554</td>
+            <td></td>
+            <td class="second">0.070</td><td>0.046</td><td>0.037</td><td>0.008</td><td class="best">0.642</td><td class="best">0.743</td>
+          </tr>
+          <tr class="ours-row">
+            <td><strong>Ours</strong></td><td></td>
+            <td class="best">0.039</td><td class="best">0.014</td><td class="best">0.020</td><td class="best">0.003</td><td class="best">0.537</td><td class="best">0.554</td>
+            <td></td>
+            <td class="best">0.054</td><td class="best">0.032</td><td class="best">0.026</td><td class="second">0.006</td><td>0.637</td><td>0.732</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-  </section>
+  </div>
 
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- ABSTRACT                                                            -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="section">
-    <div class="container">
-      <h2 class="title is-3">Abstract</h2>
-      <div class="content">
-        <p>
-          Streaming 3D reconstruction from video demands bounded memory and compute, yet existing geometric foundation
-          models either operate offline with quadratic cost or accumulate an ever-growing KV cache that exhausts GPU
-          memory within hundreds of frames.
-          We present <strong>OVGGT</strong>, a training-free framework that bounds both memory and compute to a fixed
-          budget regardless of sequence length.
-          Our approach combines <em>Self-Selective Caching</em> (FFN-residual-based KV cache compression, fully
-          compatible with FlashAttention) with <em>Dynamic Anchor Protection</em> (shielding coordinate-critical tokens
-          from eviction to suppress geometric drift).
-          Experiments on indoor, outdoor, and ultra-long benchmarks show OVGGT processes arbitrarily long videos within
-          a constant VRAM envelope while surpassing existing methods in accuracy.
-        </p>
-      </div>
+  <!-- Tab 2: Outdoor / Ultra-Long -->
+  <div class="tab-panel" data-tab-group="results" data-tab="outdoor">
+    <p class="small muted">
+      Quantitative comparison on full sequences of ETH3D (outdoor) and Long3D (ultra-long) datasets.
+      Ours<sup>200</sup> and Ours<sup>400</sup> denote 200K and 400K token budgets.
+    </p>
+    <div class="results-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th rowspan="3">Method</th>
+            <th colspan="6" style="border-bottom:none;">ETH3D (Outdoor)</th>
+            <th colspan="6" style="border-bottom:none;">Long3D (Ultra-Long)</th>
+          </tr>
+          <tr>
+            <th colspan="2">Acc &darr;</th><th colspan="2">Comp &darr;</th><th colspan="2">NC &uarr;</th>
+            <th colspan="2">Acc &darr;</th><th colspan="2">Comp &darr;</th><th colspan="2">NC &uarr;</th>
+          </tr>
+          <tr>
+            <th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th>
+            <th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th><th>Mean</th><th>Med.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CUT3R</td>
+            <td>0.940</td><td>0.607</td><td>0.709</td><td>0.374</td><td>0.718</td><td>0.812</td>
+            <td>6.189</td><td>2.405</td><td>1.921</td><td>1.535</td><td>0.501</td><td>0.497</td>
+          </tr>
+          <tr>
+            <td>TTT3R</td>
+            <td class="second">0.598</td><td>0.374</td><td>0.585</td><td>0.223</td><td>0.728</td><td>0.826</td>
+            <td>7.341</td><td>2.018</td><td>1.455</td><td>1.235</td><td class="second">0.509</td><td>0.503</td>
+          </tr>
+          <tr>
+            <td>StreamVGGT</td>
+            <td>0.601</td><td class="second">0.369</td><td>0.442</td><td>0.169</td><td>0.791</td><td>0.933</td>
+            <td colspan="6" class="oom">OOM</td>
+          </tr>
+          <tr>
+            <td>Evict3R<sup>&dagger;</sup></td>
+            <td>0.605</td><td>0.375</td><td>0.442</td><td>0.163</td><td class="second">0.792</td><td class="best">0.934</td>
+            <td>4.928</td><td>2.710</td><td>0.715</td><td>0.204</td><td>0.507</td><td>0.504</td>
+          </tr>
+          <tr>
+            <td>InfiniteVGGT</td>
+            <td>0.603</td><td>0.371</td><td>0.444</td><td>0.169</td><td class="second">0.792</td><td>0.933</td>
+            <td>4.344</td><td>3.668</td><td>0.974</td><td>0.205</td><td class="best">0.517</td><td class="best">0.525</td>
+          </tr>
+          <tr class="ours-row">
+            <td><strong>Ours<sup>200</sup></strong></td>
+            <td>0.628</td><td>0.396</td><td class="best">0.380</td><td class="second">0.121</td><td>0.790</td><td class="best">0.934</td>
+            <td class="second">2.453</td><td class="second">1.794</td><td class="best">0.390</td><td class="best">0.060</td><td>0.507</td><td class="second">0.509</td>
+          </tr>
+          <tr class="ours-row">
+            <td><strong>Ours<sup>400</sup></strong></td>
+            <td class="best">0.535</td><td class="best">0.317</td><td class="second">0.394</td><td class="best">0.107</td><td class="best">0.793</td><td class="best">0.934</td>
+            <td class="best">2.449</td><td class="best">1.675</td><td class="second">0.542</td><td class="second">0.151</td><td>0.507</td><td class="second">0.509</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-  </section>
+  </div>
 
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- METHOD OVERVIEW                                                     -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="section">
-    <div class="container">
-      <h2 class="title is-3">Method Overview</h2>
-
-      <div class="has-text-centered" style="margin-bottom:1.5rem;">
-        <img src="static/images/pipeline.png" alt="OVGGT pipeline overview" style="width:100%; border-radius:8px;">
-        <p class="image-caption">
-          <strong>Overview of OVGGT.</strong> At each time step, the input frame is encoded into tokens and processed by
-          a spatial-temporal decoder that attends to a bounded KV cache. Self-Selective Caching scores and compresses
-          tokens, while Dynamic Anchor Protection shields coordinate-critical tokens from eviction.
-        </p>
-      </div>
-
-      <div class="content">
-        <div class="method-component">
-          <strong>Self-Selective Caching (SSC)</strong> derives per-token importance from FFN residual magnitudes
-          &mdash; quantities already computed during the forward pass &mdash; requiring zero extra overhead.
-          The <em>Activation Value Rating</em> scores each token as
-          \( s_i^{(l)} = \bigl\| \lambda_2^{(l)} \cdot \mathrm{FFN}\bigl(\mathrm{LN}(\mathbf{h}_i^{(l)})\bigr) \bigr\|_2
-          \),
-          and the <em>KV Cache Compression</em> module retains the top-scoring tokens within a fixed per-layer budget.
-        </div>
-        <div class="method-component">
-          <strong>Dynamic Anchor Protection (DAP)</strong> explicitly shields geometrically critical tokens from
-          eviction.
-          The <em>Global Initial Anchor</em> permanently protects all first-frame tokens to maintain coordinate-system
-          consistency, while <em>Historical Anchors</em> are adaptively registered as the camera traverses the scene,
-          providing long-range geometric references.
-        </div>
-      </div>
+  <!-- Tab 3: Video Depth -->
+  <div class="tab-panel" data-tab-group="results" data-tab="depth">
+    <p class="small muted">
+      Video depth evaluation on Bonn and KITTI across different sequence lengths.
+    </p>
+    <div class="results-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th rowspan="3">Method</th>
+            <th colspan="6" style="border-bottom:none;">Bonn</th>
+            <th colspan="6" style="border-bottom:none;">KITTI</th>
+          </tr>
+          <tr>
+            <th colspan="3">Abs Rel &darr;</th><th colspan="3">&delta; &lt; 1.25 &uarr;</th>
+            <th colspan="3">Abs Rel &darr;</th><th colspan="3">&delta; &lt; 1.25 &uarr;</th>
+          </tr>
+          <tr>
+            <th>100</th><th>300</th><th>500</th><th>100</th><th>300</th><th>500</th>
+            <th>100</th><th>300</th><th>500</th><th>100</th><th>300</th><th>500</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>StreamVGGT</td>
+            <td class="best">0.055</td><td>--</td><td>--</td><td>0.974</td><td>--</td><td>--</td>
+            <td>0.166</td><td>--</td><td>--</td><td>0.740</td><td>--</td><td>--</td>
+          </tr>
+          <tr>
+            <td>Evict3R<sup>&dagger;</sup></td>
+            <td>0.063</td><td>0.072</td><td>0.072</td><td>0.963</td><td>0.951</td><td>0.957</td>
+            <td>0.192</td><td>0.213</td><td>0.198</td><td>0.693</td><td>0.700</td><td>0.705</td>
+          </tr>
+          <tr>
+            <td>InfiniteVGGT</td>
+            <td>0.056</td><td>0.073</td><td>0.070</td><td class="best">0.975</td><td class="best">0.957</td><td class="best">0.960</td>
+            <td>0.165</td><td>0.249</td><td>0.257</td><td>0.742</td><td>0.556</td><td>0.577</td>
+          </tr>
+          <tr class="ours-row">
+            <td><strong>Ours</strong></td>
+            <td class="best">0.055</td><td class="best">0.071</td><td class="best">0.067</td><td>0.974</td><td>0.956</td><td>0.959</td>
+            <td class="best">0.128</td><td class="best">0.133</td><td class="best">0.135</td><td class="best">0.839</td><td class="best">0.844</td><td class="best">0.839</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- RESULTS                                                             -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="section">
-    <div class="container">
-      <h2 class="title is-3">Results</h2>
-
-      <!-- ─── Qualitative ─── -->
-      <h3 class="title is-4" style="margin-top:1.5rem;">Qualitative Visualizations</h3>
-      <div class="result-image has-text-centered">
-        <img src="static/images/vis.png" alt="Qualitative comparison of 3D reconstructions" style="width:100%;"
-          loading="lazy">
-        <p class="image-caption">
-          <strong>Qualitative comparison.</strong> Ground truth vs. StreamVGGT, Evict3R, InfiniteVGGT, and OVGGT (Ours).
-          Our method produces more complete and geometrically accurate reconstructions, particularly on long sequences
-          where competing methods exhibit drift or missing regions.
-        </p>
-      </div>
-
-      <!-- ─── Efficiency ─── -->
-      <h3 class="title is-4" style="margin-top:2.5rem;">Efficiency Comparison</h3>
-      <div class="result-image has-text-centered">
-        <img src="static/images/efficiency.png" alt="Efficiency comparison — FPS and VRAM" style="width:100%;">
-        <p class="image-caption">
-          <strong>FPS and VRAM vs. sequence length.</strong> OVGGT maintains constant throughput and memory usage
-          regardless of video length, while competing methods exhibit linear or super-linear growth.
-        </p>
-      </div>
-
-      <!-- ─── Full-Cache Comparison ─── -->
-      <h3 class="title is-4" style="margin-top:2.5rem;">Comparison with Full-Cache Baseline</h3>
-      <div class="result-image has-text-centered">
-        <img src="static/images/comparison_fullcache.png" alt="Comparison with full-cache baseline" style="width:100%;">
-        <p class="image-caption">
-          <strong>Accuracy, Completeness, and Chamfer Distance vs. sequence length.</strong> OVGGT's bounded cache
-          achieves comparable or better reconstruction quality than the full-cache StreamVGGT baseline, with stable
-          performance as sequence length grows.
-        </p>
-      </div>
-
-      <!-- ─── Quantitative Tables ─── -->
-      <h3 class="title is-4" style="margin-top:2.5rem;">Quantitative Comparisons</h3>
-
-      <div class="tabs is-boxed" data-tab-group="results">
-        <ul>
-          <li class="is-active" data-tab="indoor"><a>Indoor (7-Scenes / NRGBD)</a></li>
-          <li data-tab="outdoor"><a>Outdoor / Ultra-Long</a></li>
-          <li data-tab="depth"><a>Video Depth</a></li>
-        </ul>
-      </div>
-
-      <!-- Tab 1: Indoor -->
-      <div class="tab-content is-active" data-tab-group="results" data-tab="indoor">
-        <p class="is-size-7 has-text-grey" style="margin-bottom:0.5rem;">
-          Quantitative comparison on 7-Scenes and NRGBD datasets across different sequence lengths.
-          Evict3R<sup>&dagger;</sup> denotes dynamically calibrated pruning rate.
-        </p>
-        <div class="table-container">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th rowspan="3">Method</th>
-                <th colspan="7" style="border-bottom:none;">7-Scenes</th>
-                <th colspan="7" style="border-bottom:none;">NRGBD</th>
-              </tr>
-              <tr>
-                <th rowspan="2">Len.</th>
-                <th colspan="2">Acc &darr;</th>
-                <th colspan="2">Comp &darr;</th>
-                <th colspan="2">NC &uarr;</th>
-                <th rowspan="2">Len.</th>
-                <th colspan="2">Acc &darr;</th>
-                <th colspan="2">Comp &darr;</th>
-                <th colspan="2">NC &uarr;</th>
-              </tr>
-              <tr>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- 200 / 100 -->
-              <tr>
-                <td>Spann3R</td>
-                <td>200</td>
-                <td>0.215</td>
-                <td>0.131</td>
-                <td>0.122</td>
-                <td>0.063</td>
-                <td>0.535</td>
-                <td>0.550</td>
-                <td>100</td>
-                <td>0.111</td>
-                <td>0.069</td>
-                <td>0.045</td>
-                <td>0.015</td>
-                <td>0.636</td>
-                <td>0.733</td>
-              </tr>
-              <tr>
-                <td>CUT3R</td>
-                <td></td>
-                <td>0.087</td>
-                <td>0.048</td>
-                <td>0.045</td>
-                <td>0.014</td>
-                <td>0.566</td>
-                <td>0.601</td>
-                <td></td>
-                <td>0.039</td>
-                <td>0.024</td>
-                <td>0.013</td>
-                <td>0.004</td>
-                <td>0.645</td>
-                <td>0.748</td>
-              </tr>
-              <tr>
-                <td>Point3R</td>
-                <td></td>
-                <td>0.041</td>
-                <td>0.019</td>
-                <td class="second">0.023</td>
-                <td class="second">0.006</td>
-                <td>0.579</td>
-                <td>0.622</td>
-                <td></td>
-                <td>0.046</td>
-                <td>0.028</td>
-                <td>0.016</td>
-                <td>0.004</td>
-                <td>0.662</td>
-                <td>0.775</td>
-              </tr>
-              <tr>
-                <td>TTT3R</td>
-                <td></td>
-                <td class="second">0.027</td>
-                <td>0.015</td>
-                <td class="second">0.023</td>
-                <td class="best">0.005</td>
-                <td>0.582</td>
-                <td>0.627</td>
-                <td></td>
-                <td>0.031</td>
-                <td>0.019</td>
-                <td class="best">0.012</td>
-                <td>0.004</td>
-                <td>0.650</td>
-                <td>0.756</td>
-              </tr>
-              <tr>
-                <td>StreamVGGT</td>
-                <td></td>
-                <td>0.038</td>
-                <td>0.014</td>
-                <td>0.029</td>
-                <td>0.007</td>
-                <td>0.583</td>
-                <td>0.628</td>
-                <td></td>
-                <td class="second">0.024</td>
-                <td class="best">0.014</td>
-                <td>0.013</td>
-                <td class="best">0.003</td>
-                <td>0.663</td>
-                <td>0.777</td>
-              </tr>
-              <tr>
-                <td>Evict3R</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-                <td></td>
-                <td>0.025</td>
-                <td class="second">0.015</td>
-                <td>0.013</td>
-                <td class="best">0.003</td>
-                <td>0.664</td>
-                <td>0.781</td>
-              </tr>
-              <tr>
-                <td>Evict3R<sup>&dagger;</sup></td>
-                <td></td>
-                <td>0.037</td>
-                <td class="second">0.013</td>
-                <td>0.027</td>
-                <td>0.007</td>
-                <td class="second">0.584</td>
-                <td class="second">0.631</td>
-                <td></td>
-                <td>0.031</td>
-                <td>0.020</td>
-                <td>0.013</td>
-                <td class="best">0.003</td>
-                <td>0.665</td>
-                <td class="second">0.791</td>
-              </tr>
-              <tr>
-                <td>InfiniteVGGT</td>
-                <td></td>
-                <td>0.046</td>
-                <td>0.016</td>
-                <td>0.031</td>
-                <td>0.008</td>
-                <td>0.582</td>
-                <td>0.627</td>
-                <td></td>
-                <td>0.035</td>
-                <td>0.022</td>
-                <td>0.014</td>
-                <td class="best">0.003</td>
-                <td class="second">0.669</td>
-                <td>0.787</td>
-              </tr>
-              <tr class="ours-row section-divider">
-                <td><strong>Ours</strong></td>
-                <td></td>
-                <td class="best">0.024</td>
-                <td class="best">0.008</td>
-                <td class="best">0.021</td>
-                <td class="best">0.005</td>
-                <td class="best">0.587</td>
-                <td class="best">0.635</td>
-                <td></td>
-                <td class="best">0.022</td>
-                <td class="best">0.014</td>
-                <td class="best">0.012</td>
-                <td class="best">0.003</td>
-                <td class="best">0.672</td>
-                <td class="best">0.796</td>
-              </tr>
-
-              <!-- 500 / 300 -->
-              <tr>
-                <td>Spann3R</td>
-                <td>500</td>
-                <td>0.343</td>
-                <td>0.263</td>
-                <td>0.154</td>
-                <td>0.085</td>
-                <td>0.515</td>
-                <td>0.521</td>
-                <td>300</td>
-                <td>0.346</td>
-                <td>0.221</td>
-                <td>0.175</td>
-                <td>0.099</td>
-                <td>0.558</td>
-                <td>0.586</td>
-              </tr>
-              <tr>
-                <td>CUT3R</td>
-                <td></td>
-                <td>0.194</td>
-                <td>0.143</td>
-                <td>0.092</td>
-                <td>0.034</td>
-                <td>0.527</td>
-                <td>0.538</td>
-                <td></td>
-                <td>0.244</td>
-                <td>0.136</td>
-                <td>0.081</td>
-                <td>0.019</td>
-                <td>0.575</td>
-                <td>0.613</td>
-              </tr>
-              <tr>
-                <td>Point3R</td>
-                <td></td>
-                <td>0.056</td>
-                <td>0.025</td>
-                <td>0.031</td>
-                <td>0.012</td>
-                <td>0.555</td>
-                <td>0.584</td>
-                <td></td>
-                <td>0.076</td>
-                <td>0.042</td>
-                <td class="best">0.014</td>
-                <td class="second">0.004</td>
-                <td>0.624</td>
-                <td>0.707</td>
-              </tr>
-              <tr>
-                <td>TTT3R</td>
-                <td></td>
-                <td>0.065</td>
-                <td>0.037</td>
-                <td>0.030</td>
-                <td>0.006</td>
-                <td>0.552</td>
-                <td>0.578</td>
-                <td></td>
-                <td>0.102</td>
-                <td>0.043</td>
-                <td>0.026</td>
-                <td>0.005</td>
-                <td>0.610</td>
-                <td>0.678</td>
-              </tr>
-              <tr>
-                <td>StreamVGGT</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-              </tr>
-              <tr>
-                <td>Evict3R</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-              </tr>
-              <tr>
-                <td>Evict3R<sup>&dagger;</sup></td>
-                <td></td>
-                <td>0.042</td>
-                <td>0.016</td>
-                <td>0.026</td>
-                <td class="second">0.005</td>
-                <td class="second">0.559</td>
-                <td class="second">0.589</td>
-                <td></td>
-                <td class="second">0.042</td>
-                <td class="second">0.026</td>
-                <td>0.017</td>
-                <td class="second">0.004</td>
-                <td>0.640</td>
-                <td>0.739</td>
-              </tr>
-              <tr>
-                <td>InfiniteVGGT</td>
-                <td></td>
-                <td class="second">0.040</td>
-                <td class="second">0.015</td>
-                <td class="second">0.024</td>
-                <td class="second">0.005</td>
-                <td class="best">0.561</td>
-                <td class="best">0.593</td>
-                <td></td>
-                <td>0.053</td>
-                <td>0.031</td>
-                <td>0.024</td>
-                <td>0.005</td>
-                <td class="best">0.646</td>
-                <td class="best">0.751</td>
-              </tr>
-              <tr class="ours-row section-divider">
-                <td><strong>Ours</strong></td>
-                <td></td>
-                <td class="best">0.031</td>
-                <td class="best">0.011</td>
-                <td class="best">0.020</td>
-                <td class="best">0.003</td>
-                <td class="best">0.561</td>
-                <td class="best">0.593</td>
-                <td></td>
-                <td class="best">0.037</td>
-                <td class="best">0.022</td>
-                <td class="second">0.015</td>
-                <td class="best">0.003</td>
-                <td class="second">0.642</td>
-                <td class="second">0.740</td>
-              </tr>
-
-              <!-- 1000 / 500 -->
-              <tr>
-                <td>Spann3R</td>
-                <td>1000</td>
-                <td>0.340</td>
-                <td>0.262</td>
-                <td>0.154</td>
-                <td>0.092</td>
-                <td>0.508</td>
-                <td>0.510</td>
-                <td>500</td>
-                <td>0.516</td>
-                <td>0.342</td>
-                <td>0.225</td>
-                <td>0.130</td>
-                <td>0.552</td>
-                <td>0.578</td>
-              </tr>
-              <tr>
-                <td>CUT3R</td>
-                <td></td>
-                <td>0.240</td>
-                <td>0.166</td>
-                <td>0.102</td>
-                <td>0.015</td>
-                <td>0.513</td>
-                <td>0.516</td>
-                <td></td>
-                <td>0.328</td>
-                <td>0.247</td>
-                <td>0.157</td>
-                <td>0.085</td>
-                <td>0.562</td>
-                <td>0.592</td>
-              </tr>
-              <tr>
-                <td>Point3R</td>
-                <td></td>
-                <td>0.068</td>
-                <td class="second">0.028</td>
-                <td class="second">0.025</td>
-                <td class="second">0.006</td>
-                <td class="second">0.533</td>
-                <td class="second">0.549</td>
-                <td></td>
-                <td>0.116</td>
-                <td>0.049</td>
-                <td class="second">0.027</td>
-                <td class="best">0.004</td>
-                <td>0.620</td>
-                <td>0.698</td>
-              </tr>
-              <tr>
-                <td>TTT3R</td>
-                <td></td>
-                <td>0.126</td>
-                <td>0.080</td>
-                <td>0.050</td>
-                <td>0.010</td>
-                <td>0.525</td>
-                <td>0.535</td>
-                <td></td>
-                <td>0.169</td>
-                <td>0.082</td>
-                <td>0.096</td>
-                <td>0.015</td>
-                <td>0.594</td>
-                <td>0.647</td>
-              </tr>
-              <tr>
-                <td>StreamVGGT</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-              </tr>
-              <tr>
-                <td>Evict3R</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-                <td></td>
-                <td colspan="6" class="oom">OOM</td>
-              </tr>
-              <tr>
-                <td>Evict3R<sup>&dagger;</sup></td>
-                <td></td>
-                <td>0.134</td>
-                <td>0.059</td>
-                <td>0.052</td>
-                <td>0.009</td>
-                <td>0.531</td>
-                <td>0.545</td>
-                <td></td>
-                <td>0.072</td>
-                <td class="second">0.040</td>
-                <td class="best">0.026</td>
-                <td class="second">0.006</td>
-                <td class="second">0.641</td>
-                <td class="second">0.739</td>
-              </tr>
-              <tr>
-                <td>InfiniteVGGT</td>
-                <td></td>
-                <td class="second">0.061</td>
-                <td>0.031</td>
-                <td>0.035</td>
-                <td>0.014</td>
-                <td class="best">0.537</td>
-                <td class="best">0.554</td>
-                <td></td>
-                <td class="second">0.070</td>
-                <td>0.046</td>
-                <td>0.037</td>
-                <td>0.008</td>
-                <td class="best">0.642</td>
-                <td class="best">0.743</td>
-              </tr>
-              <tr class="ours-row">
-                <td><strong>Ours</strong></td>
-                <td></td>
-                <td class="best">0.039</td>
-                <td class="best">0.014</td>
-                <td class="best">0.020</td>
-                <td class="best">0.003</td>
-                <td class="best">0.537</td>
-                <td class="best">0.554</td>
-                <td></td>
-                <td class="best">0.054</td>
-                <td class="best">0.032</td>
-                <td class="best">0.026</td>
-                <td class="second">0.006</td>
-                <td>0.637</td>
-                <td>0.732</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Tab 2: Outdoor / Ultra-Long -->
-      <div class="tab-content" data-tab-group="results" data-tab="outdoor">
-        <p class="is-size-7 has-text-grey" style="margin-bottom:0.5rem;">
-          Quantitative comparison on full sequences of ETH3D (outdoor) and Long3D (ultra-long) datasets.
-          Ours<sup>200</sup> and Ours<sup>400</sup> denote 200K and 400K token budgets.
-        </p>
-        <div class="table-container">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th rowspan="3">Method</th>
-                <th colspan="6" style="border-bottom:none;">ETH3D (Outdoor)</th>
-                <th colspan="6" style="border-bottom:none;">Long3D (Ultra-Long)</th>
-              </tr>
-              <tr>
-                <th colspan="2">Acc &darr;</th>
-                <th colspan="2">Comp &darr;</th>
-                <th colspan="2">NC &uarr;</th>
-                <th colspan="2">Acc &darr;</th>
-                <th colspan="2">Comp &darr;</th>
-                <th colspan="2">NC &uarr;</th>
-              </tr>
-              <tr>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-                <th>Mean</th>
-                <th>Med.</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>CUT3R</td>
-                <td>0.940</td>
-                <td>0.607</td>
-                <td>0.709</td>
-                <td>0.374</td>
-                <td>0.718</td>
-                <td>0.812</td>
-                <td>6.189</td>
-                <td>2.405</td>
-                <td>1.921</td>
-                <td>1.535</td>
-                <td>0.501</td>
-                <td>0.497</td>
-              </tr>
-              <tr>
-                <td>TTT3R</td>
-                <td class="second">0.598</td>
-                <td>0.374</td>
-                <td>0.585</td>
-                <td>0.223</td>
-                <td>0.728</td>
-                <td>0.826</td>
-                <td>7.341</td>
-                <td>2.018</td>
-                <td>1.455</td>
-                <td>1.235</td>
-                <td class="second">0.509</td>
-                <td>0.503</td>
-              </tr>
-              <tr>
-                <td>StreamVGGT</td>
-                <td>0.601</td>
-                <td class="second">0.369</td>
-                <td>0.442</td>
-                <td>0.169</td>
-                <td>0.791</td>
-                <td>0.933</td>
-                <td colspan="6" class="oom">OOM</td>
-              </tr>
-              <tr>
-                <td>Evict3R<sup>&dagger;</sup></td>
-                <td>0.605</td>
-                <td>0.375</td>
-                <td>0.442</td>
-                <td>0.163</td>
-                <td class="second">0.792</td>
-                <td class="best">0.934</td>
-                <td>4.928</td>
-                <td>2.710</td>
-                <td>0.715</td>
-                <td>0.204</td>
-                <td>0.507</td>
-                <td>0.504</td>
-              </tr>
-              <tr>
-                <td>InfiniteVGGT</td>
-                <td>0.603</td>
-                <td>0.371</td>
-                <td>0.444</td>
-                <td>0.169</td>
-                <td class="second">0.792</td>
-                <td>0.933</td>
-                <td>4.344</td>
-                <td>3.668</td>
-                <td>0.974</td>
-                <td>0.205</td>
-                <td class="best">0.517</td>
-                <td class="best">0.525</td>
-              </tr>
-              <tr class="ours-row">
-                <td><strong>Ours<sup>200</sup></strong></td>
-                <td>0.628</td>
-                <td>0.396</td>
-                <td class="best">0.380</td>
-                <td class="second">0.121</td>
-                <td>0.790</td>
-                <td class="best">0.934</td>
-                <td class="second">2.453</td>
-                <td class="second">1.794</td>
-                <td class="best">0.390</td>
-                <td class="best">0.060</td>
-                <td>0.507</td>
-                <td class="second">0.509</td>
-              </tr>
-              <tr class="ours-row">
-                <td><strong>Ours<sup>400</sup></strong></td>
-                <td class="best">0.535</td>
-                <td class="best">0.317</td>
-                <td class="second">0.394</td>
-                <td class="best">0.107</td>
-                <td class="best">0.793</td>
-                <td class="best">0.934</td>
-                <td class="best">2.449</td>
-                <td class="best">1.675</td>
-                <td class="second">0.542</td>
-                <td class="second">0.151</td>
-                <td>0.507</td>
-                <td class="second">0.509</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Tab 3: Video Depth -->
-      <div class="tab-content" data-tab-group="results" data-tab="depth">
-        <p class="is-size-7 has-text-grey" style="margin-bottom:0.5rem;">
-          Video depth evaluation on Bonn and KITTI across different sequence lengths.
-        </p>
-        <div class="table-container">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th rowspan="3">Method</th>
-                <th colspan="6" style="border-bottom:none;">Bonn</th>
-                <th colspan="6" style="border-bottom:none;">KITTI</th>
-              </tr>
-              <tr>
-                <th colspan="3">Abs Rel &darr;</th>
-                <th colspan="3">&delta; &lt; 1.25 &uarr;</th>
-                <th colspan="3">Abs Rel &darr;</th>
-                <th colspan="3">&delta; &lt; 1.25 &uarr;</th>
-              </tr>
-              <tr>
-                <th>100</th>
-                <th>300</th>
-                <th>500</th>
-                <th>100</th>
-                <th>300</th>
-                <th>500</th>
-                <th>100</th>
-                <th>300</th>
-                <th>500</th>
-                <th>100</th>
-                <th>300</th>
-                <th>500</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>StreamVGGT</td>
-                <td class="best">0.055</td>
-                <td>--</td>
-                <td>--</td>
-                <td>0.974</td>
-                <td>--</td>
-                <td>--</td>
-                <td>0.166</td>
-                <td>--</td>
-                <td>--</td>
-                <td>0.740</td>
-                <td>--</td>
-                <td>--</td>
-              </tr>
-              <tr>
-                <td>Evict3R<sup>&dagger;</sup></td>
-                <td>0.063</td>
-                <td>0.072</td>
-                <td>0.072</td>
-                <td>0.963</td>
-                <td>0.951</td>
-                <td>0.957</td>
-                <td>0.192</td>
-                <td>0.213</td>
-                <td>0.198</td>
-                <td>0.693</td>
-                <td>0.700</td>
-                <td>0.705</td>
-              </tr>
-              <tr>
-                <td>InfiniteVGGT</td>
-                <td>0.056</td>
-                <td>0.073</td>
-                <td>0.070</td>
-                <td class="best">0.975</td>
-                <td class="best">0.957</td>
-                <td class="best">0.960</td>
-                <td>0.165</td>
-                <td>0.249</td>
-                <td>0.257</td>
-                <td>0.742</td>
-                <td>0.556</td>
-                <td>0.577</td>
-              </tr>
-              <tr class="ours-row">
-                <td><strong>Ours</strong></td>
-                <td class="best">0.055</td>
-                <td class="best">0.071</td>
-                <td class="best">0.067</td>
-                <td>0.974</td>
-                <td>0.956</td>
-                <td>0.959</td>
-                <td class="best">0.128</td>
-                <td class="best">0.133</td>
-                <td class="best">0.135</td>
-                <td class="best">0.839</td>
-                <td class="best">0.844</td>
-                <td class="best">0.839</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- BIBTEX                                                              -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <section class="section" id="BibTeX">
-    <div class="container">
-      <h2 class="title is-3">BibTeX</h2>
-      <div class="bibtex-box">
-        <button class="bibtex-copy-btn">Copy</button>
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- BIBTEX                                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="bibtex">
+  <div class="term-head"><span class="th-prompt">$</span><span class="th-cmd">cat cite.bib</span></div>
+  <div class="bibtex">
+    <button class="bibtex-copy" type="button">Copy</button>
 <pre>@article{lu2026ovggt,
   title={OVGGT: O(1) Constant-Cost Streaming Visual Geometry Transformer},
   author={Si-Yu Lu and Po-Ting Chen and Hui-Che Hsu and Sin-Ye Jhong and Wen-Huang Cheng and Yung-Yao Chen},
   journal={arXiv preprint arXiv:2603.05959},
   year={2026}
 }</pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <!-- FOOTER                                                              -->
-  <!-- ════════════════════════════════════════════════════════════════════ -->
-  <footer class="footer">
-    <div class="container">
-      <div class="content has-text-centered">
-        <p>
-          This website template is borrowed from <a href="https://nerfies.github.io/" target="_blank">Nerfies</a>.
-        </p>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Custom JS -->
-  <script src="static/js/index.js"></script>
-
-</body>
-
-</html>
+  </div>
+</section>

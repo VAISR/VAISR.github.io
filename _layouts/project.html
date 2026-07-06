@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
-  {% include head.html %}
+  {% include head.html mathjax=true project=true %}
 </head>
 <body>
   {% include header.html %}
-  <main>
+  <main class="project">
     {{ content }}
   </main>
   {% include footer.html %}
   <script src="{{ '/assets/js/site.js' | relative_url }}"></script>
+  <script src="{{ '/assets/js/project.js' | relative_url }}"></script>
 </body>
 </html>
